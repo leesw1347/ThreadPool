@@ -40,7 +40,7 @@ namespace ThreadPool {
     /**
      *
      * @param job: queue에 입력하기 위한 std::function 객체 void job() {} 형태로 함수를 넣는다
-     */
+
     void ThreadPool::EnqueueJob(const std::function<void()> &job) {
         if (stop_all) {
             throw std::runtime_error("ThreadPool 사용 중지됨");
@@ -50,6 +50,28 @@ namespace ThreadPool {
             jobs_.push(std::move(job));
         }
         cv_job_q.notify_one(); // WorkerThread에서 잠자고 있는 쓰레드 중 하나를 깨워서 함수를 실행 시킨다
+    }
+      */
+
+    template<class F, class... Args>
+    std::future<typename std::result_of<F(Args...)>::type> ThreadPool::EnqueueJob(F f, Args... args) {
+        if (stop_all) {
+            throw std::runtime_error("ThreadPool 사용중지 됨");
+        }
+
+        using return_type = typename std::result_of<F(Args...)>::type;
+        // return_type()은 함수 F(Args...) 의 리턴 값을 type을 결정한다;
+        std::packaged_task<return_type()> job(std::bind(f, args...));
+        std::future<return_type> job_result_future = job.get_future();
+        {
+            std::lock_guard<std::mutex> lockGuard(m_job_q);
+            jobs_.push([&job]() {
+                job();
+            });
+        }
+        cv_job_q.notify_one(); // job 함수가 실행되고, jobs_ std::queue에 데이터가 들어가면
+        // 데이터를 넣고, cv.wait에서 자고있는 쓰레드를 깨워서 WorkerThread 함수가 작동하도록 전달해준다.
+        return job_result_future;
     }
 
     /**
@@ -77,7 +99,7 @@ namespace ThreadPool {
     }
 
 } // ThreadPool;
-void work(int t, int id) {
+int work(int t, int id) {
     printf("%d start \n", id);
     std::this_thread::sleep_for(std::chrono::seconds(t));
     printf("%d end after %ds\n", id, t);

@@ -15,6 +15,8 @@
 #include <thread>
 #include <vector>
 #include <memory>
+#include <typeinfo>
+#include <future>
 
 namespace ThreadPool {
 
@@ -47,17 +49,21 @@ namespace ThreadPool {
         virtual ~ThreadPool();
 
         /*job을 추가한다*/
-        void EnqueueJob(const std::function<void()> &job);
+//        void EnqueueJob(const std::function<void()> &job);
+
+        /*job을 추가한다*/
+        template<class F, class ... Args>
+        std::future<typename std::result_of<F(Args ...)>::type> EnqueueJob(
+                F f, Args... args
+        );
 
     };
 
 } // ThreadPool
 
-void work(int t, int id);
+int work(int t, int id);
 
 #endif //THREADPOOL_THREADPOOL_H
-
-
 
 
 
