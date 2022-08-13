@@ -61,12 +61,19 @@ namespace ThreadPool {
 
         using return_type = typename std::result_of<F(Args...)>::type;
         // return_type()은 함수 F(Args...) 의 리턴 값을 type을 결정한다;
-        std::packaged_task<return_type()> job(std::bind(f, args...));
+        /*아래의 경우 job 객체는 지역변수이기 때문에, EnqueueJob 함수가 리턴되면
+         * 파괴되는 객체입니다. 이때 job을 접근할 떄 이미 그 객체는 파괴되고 없어져있다
+         * 이를 방지하기 위해선 shared_ptr에 packaged_task를 보관하거나, packaged_task를 따로
+         * 컨테이너에 보관하는 방법이 있다.*/
+        /*std::packaged_task<return_type()> job(std::bind(f, args...));*/
+        auto job =
+                std::make_shared<
+                        std::packaged_task<return_type()>>(std::bind(f, args...));
         std::future<return_type> job_result_future = job.get_future();
         {
             std::lock_guard<std::mutex> lockGuard(m_job_q);
             jobs_.push([&job]() {
-                job();
+                (*job)(); // shared_ptr이기때문에 job 객체의 derefercne를 활용해서 함수를 호출해야한다
             });
         }
         cv_job_q.notify_one(); // job 함수가 실행되고, jobs_ std::queue에 데이터가 들어가면

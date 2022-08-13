@@ -17,9 +17,9 @@ int main(int argc, char *argv[]) {
     }
     std::cout << futures.size() << std::endl;
 
-    /*for (int i = 0; i < 10; i++) {
-        threadPool.EnqueueJob([i]() {
-        });
-    }*/
+    for (auto &future_item: futures) {
+        printf("result : (%p) %d\n", &future_item, future_item.get());
+    }
+
     std::cout << "ThreadPool 메인 프로그램 종료" << std::endl;
 }
